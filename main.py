@@ -13,11 +13,11 @@ DS_TRAIN_HORSE_DIR = '/horse_512/data/train'
 
 DS_TEST_BRAIN_DIR = '/Brain-MRI/dataset/Testing'  
 DS_TEST_HORSE_DIR = '/horse_512/data/validation'  
-WORK_SIZE = (200, 200)  # Размер изображений для нейронки
-NUM_CLASSES = 2 # Количество классов распознаваемых объектов, зависит от Вашей задачи
 
-#Тут задаём саму модель нейронной сети
-def create_conv_model():
+WORK_SIZE = (200, 200)  # Размер изображений для нейронки
+NUM_CLASSES = 2 # Количество классов распознаваемых объектов
+
+def make_model():
     input_shape = (WORK_SIZE[0],WORK_SIZE[1],1) # Размерность входных данных. В данном случае изображения 200х200 пикселей 1 цвета (ЧБ).
     model = Sequential() # Создаём последовательную модель
    
@@ -44,76 +44,55 @@ def create_conv_model():
     print(model.summary()) # Печатаем в консоль структуру нашей модели с размерами данных между слоями и числом параметров
     return model
 
-# Здесь и далее просто готовим данные (картинки) для работы с ними
-def load_dataset(ds_dir):
-    """ Загружаем датасеты x_train, y_train, x_test, y_test"""
-    x_train, y_train = load_ds_train(ds_dir)  # Загружаем тренировочные данные
-    x_test, y_test = load_ds_test(ds_dir)  # Загружаем тестовые данные
-    return x_train, y_train, x_test, y_test
-
-def load_ds_train(ds_dir):
-    """ Загружаем датасеты тренировочные x_train, y_train"""
+def load_data(ds_dir):
     x_train = []
     y_train = []
     
     tmp_dir = str(ds_dir + DS_TRAIN_BRAIN_DIR)
-    x_train, y_train = load_ds_image(x_train, y_train, tmp_dir, 1)
+    x_train, y_train = load_img(x_train, y_train, tmp_dir, 1)
     
     tmp_dir = str(ds_dir + DS_TRAIN_HORSE_DIR)
-    x_train, y_train = load_ds_image(x_train, y_train, tmp_dir, 0)
-    return x_train, y_train
+    x_train, y_train = load_img(x_train, y_train, tmp_dir, 0)
 
-
-def load_ds_test(ds_dir):
-    """ Загружаем датасеты тестовые x_test, y_test"""
     x_test = []
     y_test = []
     
     tmp_dir = str(ds_dir + DS_TEST_BRAIN_DIR)
-    x_test, y_test = load_ds_image(x_test, y_test, tmp_dir, 1)
+    x_test, y_test = load_img(x_test, y_test, tmp_dir, 1)
     
     tmp_dir = str(ds_dir + DS_TEST_HORSE_DIR)
-    x_test, y_test = load_ds_image(x_test, y_test, tmp_dir, 0)
-    return x_test, y_test
+    x_test, y_test = load_img(x_test, y_test, tmp_dir, 0)
+    return x_train, y_train, x_test, y_test
 
 
-def load_ds_image(x, y, dir, goodflag):
-    """ Загрузка изображений из dir в x, флаг в y """
+def load_img(x, y, dir, flg):
     tmp_dir = str(dir)
     filelist = os.listdir(tmp_dir)
-    for i in filelist:
-        tmp_img = load_img_from_file(str(tmp_dir+"/"+  i), WORK_SIZE)
-        x.append(tmp_img)
-        y.append(int(goodflag))  
+    for i in filelist:     
+        fname = str(tmp_dir+ "/"+  i)
+        img = cv2.imread(fname)
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    
+        img = cv2.resize(img, WORK_SIZE)
+        img = np.expand_dims(img, axis=2) 
+        
+        x.append(img)
+        y.append(int(flg))  
     return x, y
 
-
-def load_img_from_file(fname, imgsize=WORK_SIZE):
-    img = cv2.imread(fname)
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    
-    img = cv2.resize(img, imgsize)
-    img = np.expand_dims(img, axis=2) 
-    return img
-
-
-# Функция обучения полученной модели
-def learn_conv_model(model):
+def learn_mdl(model):
     ds_dir = "dataset"
-    x_train, y_train, x_test, y_test = load_dataset(ds_dir)
-    # Приводим данные к нужному виду
+    x_train, y_train, x_test, y_test = load_data(ds_dir)
+
     y_train = keras.utils.to_categorical(y_train, NUM_CLASSES)
     y_test = keras.utils.to_categorical(y_test, NUM_CLASSES)
-   
-    # В нужные массивы
+
     x_train = np.array(x_train, dtype=np.float64)
     x_test = np.array(x_test, dtype=np.float64)
-    
-    # Приводим к отрезку [0;1]
+
     x_train /= 255
     x_test /= 255
     
-    # batch_size - размер партии для обучения, 1 - вся. epochs - число циклов обучения (чем больше - тем лучше, 1-2тыс)
     model.fit(x_train, y_train, batch_size = 1, epochs=8, verbose=1, validation_data=(x_test, y_test))
     score = model.evaluate(x_test, y_test, verbose=0)
     
@@ -125,6 +104,5 @@ def learn_conv_model(model):
 
 
 if __name__ == '__main__':
-
-    model = create_conv_model() 
-    learn_conv_model(model) 
+    model = make_model() 
+    learn_mdl(model) 
