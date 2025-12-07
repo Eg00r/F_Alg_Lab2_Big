@@ -64,7 +64,6 @@ def load_data(ds_dir):
     x_test, y_test = load_img(x_test, y_test, tmp_dir, 0)
     return x_train, y_train, x_test, y_test
 
-
 def load_img(x, y, dir, flg):
     tmp_dir = str(dir)
     filelist = os.listdir(tmp_dir)
